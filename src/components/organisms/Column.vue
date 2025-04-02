@@ -1,13 +1,20 @@
 <template>
   <div 
     class="column"
-    @drop="onDrop"
+    draggable="true"
+    @dragstart="onDragStart"
     @dragover.prevent
+    @drop="onDrop"
     @dragenter.prevent
   >
     <div class="column-header">
       <h3>{{ column.title }}</h3>
-      <span class="task-count">{{ column.tasks.length }} tâches</span>
+      <div class="column-actions">
+        <span class="task-count">{{ column.tasks.length }} tâches</span>
+        <button class="delete-column" @click.stop="deleteThisColumn">
+          🗑️
+        </button>
+      </div>
     </div>
     
     <div class="tasks-list">
@@ -15,67 +22,80 @@
         v-for="task in column.tasks"
         :key="task.id"
         :task="task"
+        :columnId="column.id"
         @delete="deleteTask"
       />
     </div>
     
-    <div class="add-task">
-      <Input 
-        v-model="newTaskTitle"
-        placeholder="Ajouter une nouvelle tâche"
-        @keyup.enter="addTask"
-      />
-      <Button @click="addTask" full-width>Ajouter</Button>
-    </div>
+    <Button 
+      @click="openModal"
+      type="secondary" 
+      full-width
+    >
+      + Ajouter une tâche
+    </Button>
+
+    <AddTaskModal
+      :isOpen="isModalOpen"
+      :columnId="column.id"
+      @close="closeModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useBoardStore } from '../../store/board';
-import Input from '../atoms/Input.vue';
 import Button from '../atoms/Button.vue';
 import TaskItem from '../molecules/TaskItem.vue';
-
-interface Column {
-  id: string;
-  title: string;
-  tasks: Task[];
-}
-
-interface Task {
-  id: string;
-  title: string;
-  priority: string;
-}
+import AddTaskModal from '../molecules/AddTaskModal.vue';
 
 const props = defineProps<{
-  column: Column;
+  column: {
+    id: string;
+    title: string;
+    tasks: Array<{
+      id: string;
+      title: string;
+      priority: string;
+    }>;
+  };
 }>();
 
 const boardStore = useBoardStore();
-const newTaskTitle = ref('');
+const isModalOpen = ref(false);
 
 const deleteTask = (taskId: string) => {
   boardStore.deleteTask(props.column.id, taskId);
 };
 
-const addTask = () => {
-  if (newTaskTitle.value.trim()) {
-    boardStore.addTask(props.column.id, {
-      id: Date.now().toString(),
-      title: newTaskTitle.value,
-      priority: 'medium'
-    });
-    newTaskTitle.value = '';
+const deleteThisColumn = () => {
+  if (confirm(`Voulez-vous vraiment supprimer la colonne "${props.column.title}" ?`)) {
+    boardStore.deleteColumn(props.column.id);
+  }
+};
+
+const onDragStart = (e: DragEvent) => {
+  if (e.dataTransfer) {
+    e.dataTransfer.setData('columnId', props.column.id);
+    e.dataTransfer.effectAllowed = 'move';
   }
 };
 
 const onDrop = (e: DragEvent) => {
+  e.preventDefault();
   const taskId = e.dataTransfer?.getData('taskId');
   if (taskId) {
     boardStore.moveTask(taskId, props.column.id);
   }
+};
+
+const openModal = () => {
+  isModalOpen.value = true;
+};
+
+const closeModal = () => {
+  isModalOpen.value = false;
 };
 </script>
 
@@ -89,6 +109,11 @@ const onDrop = (e: DragEvent) => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  cursor: grab;
+}
+
+.column:active {
+  cursor: grabbing;
 }
 
 .column-header {
@@ -97,6 +122,27 @@ const onDrop = (e: DragEvent) => {
   align-items: center;
   padding-bottom: 12px;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.column-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.delete-column {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  transition: color 0.2s;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.delete-column:hover {
+  color: #ef4444;
+  background-color: #fee2e2;
 }
 
 h3 {
@@ -117,12 +163,5 @@ h3 {
   flex-grow: 1;
   overflow-y: auto;
   padding-right: 4px;
-}
-
-.add-task {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 </style>
