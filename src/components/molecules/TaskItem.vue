@@ -12,7 +12,6 @@
           {{ priorityLabel }}
         </span>
       </div>
-      
       <div v-else class="edit-form">
         <Input 
           v-model="editForm.title"
@@ -54,30 +53,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
-import { reactive } from 'vue';
+import { ref, computed} from 'vue';
 import { useBoardStore } from '../../store/board';
 import Input from '../atoms/Input.vue';
 import Select from '../atoms/Select.vue';
 import Button from '../atoms/Button.vue';
 
-interface Task {
-  id: string;
-  title: string;
-  priority: string;
-}
-
 const props = defineProps<{
-  task: Task;
-  columnId: string; // <-- Ajoutez cette prop
+  task: {
+    id: string;
+    title: string;
+    priority: string;
+  };
+  columnId: string;
 }>();
 
-const emit = defineEmits(['delete']);
+const emit = defineEmits(['delete', 'drag-start']);
 
 const boardStore = useBoardStore();
 const isEditing = ref(false);
-const titleInput = ref<InstanceType<typeof Input> | null>(null);
-
 const editForm = ref({
   title: props.task.title,
   priority: props.task.priority
@@ -90,14 +84,18 @@ const priorityOptions = [
 ];
 
 const priorityLabel = computed(() => {
-  const option = priorityOptions.find(opt => opt.value === props.task.priority);
-  return option?.label || '';
+  return priorityOptions.find(opt => opt.value === props.task.priority)?.label || '';
 });
 
-const startEditing = async () => {
+const onDragStart = (e: DragEvent) => {
+  emit('drag-start', e, props.task.id, props.columnId);
+  e.dataTransfer?.setData('taskId', props.task.id);
+  e.dataTransfer?.setData('sourceColumnId', props.columnId);
+  e.dataTransfer!.effectAllowed = 'move';
+};
+
+const startEditing = () => {
   isEditing.value = true;
-  await nextTick();
-  titleInput.value?.focus();
 };
 
 const saveEditing = () => {
@@ -111,13 +109,6 @@ const saveEditing = () => {
   );
   isEditing.value = false;
 };
-
-const onDragStart = (e: DragEvent) => {
-  if (e.dataTransfer) {
-    e.dataTransfer.setData('taskId', props.task.id);
-    e.dataTransfer.effectAllowed = 'move';
-  }
-};
 </script>
 
 <style scoped>
@@ -129,6 +120,26 @@ const onDragStart = (e: DragEvent) => {
   margin-bottom: 12px;
   transition: all 0.2s;
   border-left: 4px solid;
+}
+
+.task-item[draggable="true"] {
+  cursor: grab;
+}
+
+.task-item:active {
+  cursor: grabbing;
+}
+
+.task-item[data-priority="high"] {
+  border-left-color: #ef4444;
+}
+
+.task-item[data-priority="medium"] {
+  border-left-color: #f59e0b;
+}
+
+.task-item[data-priority="low"] {
+  border-left-color: #10b981;
 }
 
 .task-header {
@@ -146,21 +157,21 @@ const onDragStart = (e: DragEvent) => {
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 500;
-  
-  &.high {
-    background-color: #fee2e2;
-    color: #b91c1c;
-  }
-  
-  &.medium {
-    background-color: #fef3c7;
-    color: #92400e;
-  }
-  
-  &.low {
-    background-color: #dcfce7;
-    color: #166534;
-  }
+}
+
+.priority-badge.high {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.priority-badge.medium {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.priority-badge.low {
+  background-color: #dcfce7;
+  color: #166534;
 }
 
 .edit-form {
@@ -175,9 +186,6 @@ const onDragStart = (e: DragEvent) => {
   justify-content: flex-end;
 }
 </style>
-
-
-
 
 
 

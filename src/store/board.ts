@@ -31,10 +31,14 @@ export const useBoardStore = defineStore('board', () => {
 
   const columns = ref<Column[]>(loadFromStorage());
 
+  const saveToLocalStorage = () => {
+    localStorage.setItem('kanban-board', JSON.stringify(columns.value));
+  };
+
   watch(
     columns,
     (newColumns) => {
-      localStorage.setItem('kanban-board', JSON.stringify(newColumns));
+      saveToLocalStorage();
     },
     { deep: true }
   );
@@ -45,7 +49,6 @@ export const useBoardStore = defineStore('board', () => {
       title: column.title || 'Nouvelle Colonne',
       tasks: column.tasks || []
     };
-    
     columns.value.push(newColumn);
   };
 
@@ -75,22 +78,21 @@ export const useBoardStore = defineStore('board', () => {
   };
 
   const moveTask = (taskId: string, toColumnId: string) => {
-    let task: Task | null = null;
+    const sourceColumn = columns.value.find(col => 
+      col.tasks.some(task => task.id === taskId)
+    );
     
-    for (const column of columns.value) {
-      const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-      if (taskIndex !== -1) {
-        task = column.tasks[taskIndex];
-        column.tasks.splice(taskIndex, 1);
-        break;
-      }
-    }
+    if (!sourceColumn) return;
     
-    if (task) {
-      const toColumn = columns.value.find(c => c.id === toColumnId);
-      if (toColumn) {
-        toColumn.tasks.push(task);
-      }
+    const taskIndex = sourceColumn.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex === -1) return;
+    
+    const task = sourceColumn.tasks[taskIndex];
+    const targetColumn = columns.value.find(col => col.id === toColumnId);
+    
+    if (targetColumn && targetColumn !== sourceColumn) {
+      sourceColumn.tasks.splice(taskIndex, 1);
+      targetColumn.tasks.push(task);
     }
   };
 
@@ -129,6 +131,7 @@ export const useBoardStore = defineStore('board', () => {
     deleteTask,
     moveTask,
     updateTask,
-    resetBoard
+    resetBoard,
+    saveToLocalStorage
   };
 });

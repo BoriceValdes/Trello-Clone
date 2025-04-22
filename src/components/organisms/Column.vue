@@ -1,13 +1,9 @@
 <template>
-  <div 
-    class="column"
-    draggable="true"
-    @dragstart="onDragStart"
-    @dragover.prevent
-    @drop="onDrop"
-    @dragenter.prevent
-  >
-    <div class="column-header">
+  <div class="column">
+    <div 
+      class="column-header"
+      @dragstart.prevent
+    >
       <h3>{{ column.title }}</h3>
       <div class="column-actions">
         <span class="task-count">{{ column.tasks.length }} tâches</span>
@@ -17,15 +13,22 @@
       </div>
     </div>
     
-    <div class="tasks-list">
-      <TaskItem
-        v-for="task in column.tasks"
-        :key="task.id"
-        :task="task"
-        :columnId="column.id"
-        @delete="deleteTask"
-      />
-    </div>
+    <draggable
+      v-model="column.tasks"
+      group="tasks"
+      item-key="id"
+      @end="onTaskDragEnd"
+      class="tasks-list"
+    >
+      <template #item="{ element: task }">
+        <TaskItem
+          :task="task"
+          :columnId="column.id"
+          @delete="deleteTask"
+          @drag-start="(e) => $emit('task-drag-start', task.id, column.id)"
+        />
+      </template>
+    </draggable>
     
     <Button 
       @click="openModal"
@@ -46,6 +49,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useBoardStore } from '../../store/board';
+import draggable from 'vuedraggable';
 import Button from '../atoms/Button.vue';
 import TaskItem from '../molecules/TaskItem.vue';
 import AddTaskModal from '../molecules/AddTaskModal.vue';
@@ -62,6 +66,8 @@ const props = defineProps<{
   };
 }>();
 
+const emit = defineEmits(['task-drag-start']);
+
 const boardStore = useBoardStore();
 const isModalOpen = ref(false);
 
@@ -75,19 +81,8 @@ const deleteThisColumn = () => {
   }
 };
 
-const onDragStart = (e: DragEvent) => {
-  if (e.dataTransfer) {
-    e.dataTransfer.setData('columnId', props.column.id);
-    e.dataTransfer.effectAllowed = 'move';
-  }
-};
-
-const onDrop = (e: DragEvent) => {
-  e.preventDefault();
-  const taskId = e.dataTransfer?.getData('taskId');
-  if (taskId) {
-    boardStore.moveTask(taskId, props.column.id);
-  }
+const onTaskDragEnd = () => {
+  boardStore.saveToLocalStorage();
 };
 
 const openModal = () => {
@@ -109,19 +104,18 @@ const closeModal = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  cursor: grab;
-}
-
-.column:active {
-  cursor: grabbing;
+  user-select: none;
 }
 
 .column-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  cursor: grab;
+  user-select: none;
   padding-bottom: 12px;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.column-header:active {
+  cursor: grabbing;
 }
 
 .column-actions {
@@ -135,7 +129,7 @@ const closeModal = () => {
   border: none;
   cursor: pointer;
   color: #64748b;
-  transition: color 0.2s;
+  transition: all 0.2s;
   padding: 4px;
   border-radius: 4px;
 }
@@ -163,5 +157,11 @@ h3 {
   flex-grow: 1;
   overflow-y: auto;
   padding-right: 4px;
+  min-height: 100px;
 }
 </style>
+
+
+
+
+

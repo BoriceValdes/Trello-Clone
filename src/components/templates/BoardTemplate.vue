@@ -10,7 +10,6 @@
         >
           + Ajouter une colonne
         </Button>
-        
         <PersistControl class="persist-control" />
       </div>
     </div>
@@ -19,12 +18,17 @@
       v-model="boardStore.columns"
       group="columns"
       item-key="id"
-      handle=".column"
+      handle=".column-header"
       @end="onColumnDragEnd"
       class="board"
+      ghost-class="ghost-column"
+      drag-class="dragging-column"
     >
       <template #item="{ element: column }">
-        <Column :column="column" />
+        <Column 
+          :column="column"
+          @task-drag-start="handleTaskDragStart"
+        />
       </template>
     </draggable>
 
@@ -56,7 +60,11 @@ const closeAddColumnModal = () => {
 };
 
 const onColumnDragEnd = () => {
-  // La réactivité de Pinia mettra automatiquement à jour le store
+  boardStore.saveToLocalStorage();
+};
+
+const handleTaskDragStart = (taskId: string, columnId: string) => {
+  // Transmis au store si nécessaire
 };
 </script>
 
@@ -104,13 +112,17 @@ h1 {
   display: flex;
   gap: 12px;
 }
+
+.ghost-column {
+  opacity: 0.5;
+  background: #c8ebfb;
+}
+
+.dragging-column {
+  transform: rotate(2deg);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
 </style>
-
-
-
-
-
-
 
 
 
