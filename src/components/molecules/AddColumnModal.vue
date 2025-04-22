@@ -1,31 +1,32 @@
 <template>
   <Transition name="modal">
-    <div v-if="isOpen" class="modal-overlay" @click.self="closeModal">
+    <div v-if="isOpen" class="modal-overlay" @click.self="close">
       <div class="modal-container">
         <div class="modal-header">
-          <h3>Ajouter une colonne</h3>
-          <button class="close-btn" @click="closeModal">
+          <h3>Nouvelle colonne</h3>
+          <button class="close-btn" @click="close">
             ✕
           </button>
         </div>
 
         <div class="modal-body">
           <Input 
-            v-model="newColumnTitle"
+            v-model="title"
             label="Nom de la colonne"
             placeholder="Ex: En revue"
             ref="titleInput"
+            @keyup.enter="submit"
           />
         </div>
 
         <div class="modal-footer">
-          <Button type="secondary" @click="closeModal">Annuler</Button>
+          <Button type="secondary" @click="close">Annuler</Button>
           <Button 
             type="primary" 
-            @click="addNewColumn"
-            :disabled="!newColumnTitle.trim()"
+            @click="submit"
+            :disabled="!title.trim()"
           >
-            Ajouter
+            Créer
           </Button>
         </div>
       </div>
@@ -35,7 +36,6 @@
 
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue'; // Ajout de watch ici
-import { useBoardStore } from '../../store/board';
 import Input from '../atoms/Input.vue';
 import Button from '../atoms/Button.vue';
 
@@ -43,26 +43,20 @@ const props = defineProps<{
   isOpen: boolean;
 }>();
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'submit']);
 
-const boardStore = useBoardStore();
-const newColumnTitle = ref('');
+const title = ref('');
 const titleInput = ref<InstanceType<typeof Input> | null>(null);
 
-const addNewColumn = () => {
-  if (!newColumnTitle.value.trim()) return;
-
-  boardStore.addColumn({
-    title: newColumnTitle.value,
-    tasks: []
-  });
-
-  newColumnTitle.value = '';
-  closeModal();
+const close = () => {
+  title.value = '';
+  emit('close');
 };
 
-const closeModal = () => {
-  emit('close');
+const submit = () => {
+  if (!title.value.trim()) return;
+  emit('submit', title.value);
+  close();
 };
 
 watch(() => props.isOpen, (isOpen) => {
@@ -123,3 +117,6 @@ watch(() => props.isOpen, (isOpen) => {
   cursor: pointer;
 }
 </style>
+
+
+

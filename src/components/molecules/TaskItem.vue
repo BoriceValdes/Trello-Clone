@@ -7,7 +7,8 @@
   >
     <div class="task-header">
       <div v-if="!isEditing" class="task-content">
-        <h4>{{ task.title }}</h4>
+        <h4 v-html="highlightText(task.title)"></h4>
+        <p v-if="task.description" class="task-description" v-html="highlightText(task.description)"></p>
         <span class="priority-badge" :class="task.priority">
           {{ priorityLabel }}
         </span>
@@ -17,6 +18,11 @@
           v-model="editForm.title"
           label="Titre"
           ref="titleInput"
+        />
+        <Input
+          v-model="editForm.description"
+          label="Description"
+          type="textarea"
         />
         <Select
           v-model="editForm.priority"
@@ -37,7 +43,7 @@
       <Button 
         v-else
         type="primary" 
-        @click="saveEditing"
+        @click="saveChanges"
       >
         💾 Sauvegarder
       </Button>
@@ -63,17 +69,19 @@ const props = defineProps<{
   task: {
     id: string;
     title: string;
-    priority: string;
+    priority: 'high' | 'medium' | 'low';
+    description?: string;
   };
   columnId: string;
 }>();
 
-const emit = defineEmits(['delete', 'drag-start']);
+const emit = defineEmits(['delete', 'update', 'drag-start']);
 
 const boardStore = useBoardStore();
 const isEditing = ref(false);
 const editForm = ref({
   title: props.task.title,
+  description: props.task.description || '',
   priority: props.task.priority
 });
 
@@ -87,6 +95,16 @@ const priorityLabel = computed(() => {
   return priorityOptions.find(opt => opt.value === props.task.priority)?.label || '';
 });
 
+const highlightText = (text: string) => {
+  if (!boardStore.searchQuery) return text;
+  const regex = new RegExp(`(${escapeRegExp(boardStore.searchQuery)})`, 'gi');
+  return text.replace(regex, '<mark>$1</mark>');
+};
+
+const escapeRegExp = (string: string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 const onDragStart = (e: DragEvent) => {
   emit('drag-start', e, props.task.id, props.columnId);
   e.dataTransfer?.setData('taskId', props.task.id);
@@ -98,15 +116,12 @@ const startEditing = () => {
   isEditing.value = true;
 };
 
-const saveEditing = () => {
-  boardStore.updateTask(
-    props.columnId,
-    props.task.id,
-    { 
-      title: editForm.value.title,
-      priority: editForm.value.priority
-    }
-  );
+const saveChanges = () => {
+  emit('update', props.task.id, {
+    title: editForm.value.title,
+    description: editForm.value.description,
+    priority: editForm.value.priority
+  });
   isEditing.value = false;
 };
 </script>
@@ -151,6 +166,13 @@ const saveEditing = () => {
   word-break: break-word;
 }
 
+.task-description {
+  margin: 0 0 8px 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  word-break: break-word;
+}
+
 .priority-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -184,6 +206,12 @@ const saveEditing = () => {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+:deep(mark) {
+  background-color: #fde047;
+  padding: 0 2px;
+  border-radius: 2px;
 }
 </style>
 

@@ -2,27 +2,42 @@
   <div class="board-container">
     <div class="board-header">
       <h1>Tableau de tâches</h1>
+      
+      <div class="search-controls">
+        <Input
+          v-model="boardStore.searchQuery"
+          placeholder="Rechercher des tâches..."
+          class="search-input"
+        />
+        <Select
+          v-model="boardStore.searchPriority"
+          :options="priorityOptions"
+          placeholder="Toutes priorités"
+          class="priority-filter"
+        />
+      </div>
+
       <div class="header-actions">
         <Button 
           type="primary" 
           @click="openAddColumnModal"
           class="action-btn"
         >
-          + Ajouter une colonne
+          + Colonne
         </Button>
-        <PersistControl class="persist-control" />
+        <PersistControl />
       </div>
     </div>
     
     <draggable 
-      v-model="boardStore.columns"
-      group="columns"
-      item-key="id"
-      handle=".column-header"
-      @end="onColumnDragEnd"
-      class="board"
-      ghost-class="ghost-column"
-      drag-class="dragging-column"
+    :modelValue="boardStore.filteredColumns"
+    @update:modelValue="handleColumnsReorder"
+    group="columns"
+    item-key="id"
+    handle=".column-header"
+    class="board"
+    ghost-class="ghost-column"
+    drag-class="dragging-column"
     >
       <template #item="{ element: column }">
         <Column 
@@ -35,6 +50,7 @@
     <AddColumnModal
       :isOpen="isAddColumnModalOpen"
       @close="closeAddColumnModal"
+      @submit="addNewColumn"
     />
   </div>
 </template>
@@ -47,9 +63,20 @@ import Button from '../../components/atoms/Button.vue';
 import Column from '../../components/organisms/Column.vue';
 import PersistControl from '../../components/molecules/PersistControl.vue';
 import AddColumnModal from '../../components/molecules/AddColumnModal.vue';
+import Input from '../../components/atoms/Input.vue';
+import Select from '../../components/atoms/Select.vue';
+
+
 
 const boardStore = useBoardStore();
 const isAddColumnModalOpen = ref(false);
+
+const priorityOptions = [
+  { value: '', label: 'Toutes priorités' },
+  { value: 'high', label: 'Haute' },
+  { value: 'medium', label: 'Moyenne' },
+  { value: 'low', label: 'Basse' }
+];
 
 const openAddColumnModal = () => {
   isAddColumnModalOpen.value = true;
@@ -59,12 +86,22 @@ const closeAddColumnModal = () => {
   isAddColumnModalOpen.value = false;
 };
 
+const handleColumnsReorder = (newOrder: Column[]) => {
+  boardStore.updateColumnsOrder(newOrder);
+  boardStore.saveToLocalStorage();
+};
+
+const addNewColumn = (title: string) => {
+  boardStore.addColumn(title);
+  closeAddColumnModal();
+};
+
 const onColumnDragEnd = () => {
   boardStore.saveToLocalStorage();
 };
 
 const handleTaskDragStart = (taskId: string, columnId: string) => {
-  // Transmis au store si nécessaire
+  // Pour un traitement ultérieur si nécessaire
 };
 </script>
 
@@ -80,20 +117,28 @@ const handleTaskDragStart = (taskId: string, columnId: string) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.search-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-right: auto;
+}
+
+.search-input {
+  width: 250px;
+}
+
+.priority-filter {
+  width: 180px;
 }
 
 .header-actions {
   display: flex;
   gap: 12px;
-  align-items: center;
-}
-
-h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #111827;
-  white-space: nowrap;
 }
 
 .board {
@@ -102,15 +147,6 @@ h1 {
   overflow-x: auto;
   padding-bottom: 16px;
   min-height: 600px;
-}
-
-.action-btn {
-  flex-shrink: 0;
-}
-
-.persist-control {
-  display: flex;
-  gap: 12px;
 }
 
 .ghost-column {
@@ -123,6 +159,10 @@ h1 {
   box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
 </style>
+
+
+
+
 
 
 

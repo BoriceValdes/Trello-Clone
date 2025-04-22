@@ -3,16 +3,14 @@
     <Button 
       @click="handleSave" 
       type="secondary"
-      class="persist-btn"
     >
-      Sauvegarder
+      💾 Sauvegarder
     </Button>
     <Button 
       @click="handleReset" 
       type="danger"
-      class="persist-btn"
     >
-      Réinitialiser
+      🔄 Réinitialiser
     </Button>
   </div>
 </template>
@@ -24,12 +22,12 @@ import Button from '../../components/atoms/Button.vue';
 const boardStore = useBoardStore();
 
 const handleSave = () => {
-  localStorage.setItem('kanban-board', JSON.stringify(boardStore.columns));
+  boardStore.saveToLocalStorage();
   alert('Tableau sauvegardé !');
 };
 
 const handleReset = () => {
-  if (confirm('Voulez-vous vraiment réinitialiser le tableau ?')) {
+  if (confirm('Réinitialiser le tableau ? Toutes les données seront perdues.')) {
     boardStore.resetBoard();
   }
 };
@@ -38,10 +36,9 @@ const handleReset = () => {
 <style scoped>
 .persist-control {
   display: flex;
-  gap: 12px;
-}
-
-.persist-btn {
-  flex-shrink: 0;
+  gap: 8px;
 }
 </style>
+
+
+

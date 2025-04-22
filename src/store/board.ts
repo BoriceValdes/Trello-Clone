@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 interface Task {
   id: string;
   title: string;
-  priority: string;
+  priority: 'high' | 'medium' | 'low';
+  description?: string;
 }
 
 interface Column {
@@ -14,124 +15,126 @@ interface Column {
 }
 
 export const useBoardStore = defineStore('board', () => {
-  const loadFromStorage = () => {
+  // State
+  const columns = ref<Column[]>(loadFromStorage());
+  const searchQuery = ref('');
+  const searchPriority = ref<string>('');
+
+  // Getters
+  const filteredColumns = computed(() => {
+    if (!searchQuery.value && !searchPriority.value) return columns.value;
+    
+    return columns.value.map(column => ({
+      ...column,
+      tasks: column.tasks.filter(task => {
+        const matchesText = searchQuery.value 
+          ? task.title.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
+            (task.description?.toLowerCase().includes(searchQuery.value.toLowerCase()))
+          : true;
+        
+        const matchesPriority = searchPriority.value
+          ? task.priority === searchPriority.value
+          : true;
+        
+        return matchesText && matchesPriority;
+      })
+    })).filter(column => column.tasks.length > 0);
+  });
+
+  // Actions
+  function loadFromStorage() {
     const saved = localStorage.getItem('kanban-board');
-    return saved ? JSON.parse(saved) : [
+    return saved ? JSON.parse(saved) : getDefaultBoard();
+  }
+
+  function getDefaultBoard(): Column[] {
+    return [
       { 
         id: '1', 
         title: 'À faire', 
         tasks: [
-          { id: '1', title: 'Tâche exemple', priority: 'medium' }
+          { id: '1', title: 'Exemple de tâche', priority: 'medium', description: 'Description exemple' }
         ] 
       },
       { id: '2', title: 'En cours', tasks: [] },
       { id: '3', title: 'Terminé', tasks: [] }
     ];
-  };
+  }
 
-  const columns = ref<Column[]>(loadFromStorage());
-
-  const saveToLocalStorage = () => {
+  function saveToLocalStorage() {
     localStorage.setItem('kanban-board', JSON.stringify(columns.value));
-  };
+  }
 
-  watch(
-    columns,
-    (newColumns) => {
-      saveToLocalStorage();
-    },
-    { deep: true }
-  );
+  function addColumn(title: string) {
+    columns.value.push({
+      id: Date.now().toString(),
+      title,
+      tasks: []
+    });
+  }
 
-  const addColumn = (column: Omit<Column, 'id'> & { id?: string }) => {
-    const newColumn = {
-      id: column.id || Date.now().toString(),
-      title: column.title || 'Nouvelle Colonne',
-      tasks: column.tasks || []
-    };
-    columns.value.push(newColumn);
-  };
-
-  const deleteColumn = (columnId: string) => {
+  function deleteColumn(columnId: string) {
     if (columns.value.length <= 1) {
-      alert("Vous ne pouvez pas supprimer la dernière colonne");
+      alert("Vous devez garder au moins une colonne");
       return;
     }
-    columns.value = columns.value.filter(column => column.id !== columnId);
-  };
+    columns.value = columns.value.filter(col => col.id !== columnId);
+  }
 
-  const addTask = (columnId: string, task: Omit<Task, 'id'>) => {
-    const column = columns.value.find(c => c.id === columnId);
+  function addTask(columnId: string, task: Omit<Task, 'id'>) {
+    const column = columns.value.find(col => col.id === columnId);
     if (column) {
       column.tasks.push({
         id: Date.now().toString(),
         ...task
       });
     }
-  };
+  }
 
-  const deleteTask = (columnId: string, taskId: string) => {
-    const column = columns.value.find(c => c.id === columnId);
+  function deleteTask(columnId: string, taskId: string) {
+    const column = columns.value.find(col => col.id === columnId);
     if (column) {
-      column.tasks = column.tasks.filter(t => t.id !== taskId);
+      column.tasks = column.tasks.filter(task => task.id !== taskId);
     }
-  };
+  }
 
-  const moveTask = (taskId: string, toColumnId: string) => {
-    const sourceColumn = columns.value.find(col => 
-      col.tasks.some(task => task.id === taskId)
-    );
-    
-    if (!sourceColumn) return;
-    
-    const taskIndex = sourceColumn.tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) return;
-    
-    const task = sourceColumn.tasks[taskIndex];
-    const targetColumn = columns.value.find(col => col.id === toColumnId);
-    
-    if (targetColumn && targetColumn !== sourceColumn) {
-      sourceColumn.tasks.splice(taskIndex, 1);
-      targetColumn.tasks.push(task);
-    }
-  };
-
-  const updateTask = (columnId: string, taskId: string, updates: Partial<Task>) => {
-    const column = columns.value.find(c => c.id === columnId);
+  function updateTask(columnId: string, taskId: string, updates: Partial<Task>) {
+    const column = columns.value.find(col => col.id === columnId);
     if (!column) return;
-  
-    const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) return;
-  
-    column.tasks[taskIndex] = {
-      ...column.tasks[taskIndex],
-      ...updates
-    };
-  };
 
-  const resetBoard = () => {
-    columns.value = [
-      { 
-        id: '1', 
-        title: 'À faire', 
-        tasks: [
-          { id: '1', title: 'Tâche exemple', priority: 'medium' }
-        ] 
-      },
-      { id: '2', title: 'En cours', tasks: [] },
-      { id: '3', title: 'Terminé', tasks: [] }
-    ];
-  };
+    const task = column.tasks.find(t => t.id === taskId);
+    if (task) {
+      Object.assign(task, updates);
+    }
+  }
+
+  function resetBoard() {
+    columns.value = getDefaultBoard();
+  }
+
+  function updateColumnsOrder(newColumns: Column[]) {
+    // Mettez à jour l'ordre des colonnes originales
+    columns.value = newColumns.map(newCol => {
+      const original = columns.value.find(col => col.id === newCol.id);
+      return original || newCol;
+    });
+  }
+
+  // Watcher
+  watch(columns, saveToLocalStorage, { deep: true });
 
   return {
     columns,
+    filteredColumns,
+    searchQuery,
+    searchPriority,
     addColumn,
     deleteColumn,
     addTask,
     deleteTask,
-    moveTask,
     updateTask,
     resetBoard,
-    saveToLocalStorage
+    saveToLocalStorage,
+    updateColumnsOrder
   };
 });

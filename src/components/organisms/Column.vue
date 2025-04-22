@@ -1,9 +1,6 @@
 <template>
   <div class="column">
-    <div 
-      class="column-header"
-      @dragstart.prevent
-    >
+    <div class="column-header">
       <h3>{{ column.title }}</h3>
       <div class="column-actions">
         <span class="task-count">{{ column.tasks.length }} tâches</span>
@@ -25,23 +22,25 @@
           :task="task"
           :columnId="column.id"
           @delete="deleteTask"
+          @update="updateTask"
           @drag-start="(e) => $emit('task-drag-start', task.id, column.id)"
         />
       </template>
     </draggable>
     
     <Button 
-      @click="openModal"
+      @click="openAddTaskModal"
       type="secondary" 
       full-width
     >
-      + Ajouter une tâche
+      + Tâche
     </Button>
 
     <AddTaskModal
-      :isOpen="isModalOpen"
+      :isOpen="isAddTaskModalOpen"
       :columnId="column.id"
-      @close="closeModal"
+      @close="closeAddTaskModal"
+      @submit="addNewTask"
     />
   </div>
 </template>
@@ -61,7 +60,8 @@ const props = defineProps<{
     tasks: Array<{
       id: string;
       title: string;
-      priority: string;
+      priority: 'high' | 'medium' | 'low';
+      description?: string;
     }>;
   };
 }>();
@@ -69,14 +69,18 @@ const props = defineProps<{
 const emit = defineEmits(['task-drag-start']);
 
 const boardStore = useBoardStore();
-const isModalOpen = ref(false);
+const isAddTaskModalOpen = ref(false);
 
 const deleteTask = (taskId: string) => {
   boardStore.deleteTask(props.column.id, taskId);
 };
 
+const updateTask = (taskId: string, updates: Partial<Task>) => {
+  boardStore.updateTask(props.column.id, taskId, updates);
+};
+
 const deleteThisColumn = () => {
-  if (confirm(`Voulez-vous vraiment supprimer la colonne "${props.column.title}" ?`)) {
+  if (confirm(`Supprimer la colonne "${props.column.title}" ?`)) {
     boardStore.deleteColumn(props.column.id);
   }
 };
@@ -85,12 +89,21 @@ const onTaskDragEnd = () => {
   boardStore.saveToLocalStorage();
 };
 
-const openModal = () => {
-  isModalOpen.value = true;
+const openAddTaskModal = () => {
+  isAddTaskModalOpen.value = true;
 };
 
-const closeModal = () => {
-  isModalOpen.value = false;
+const closeAddTaskModal = () => {
+  isAddTaskModalOpen.value = false;
+};
+
+const addNewTask = (task: { title: string; description: string; priority: string }) => {
+  boardStore.addTask(props.column.id, {
+    title: task.title,
+    description: task.description,
+    priority: task.priority as 'high' | 'medium' | 'low'
+  });
+  closeAddTaskModal();
 };
 </script>
 
@@ -109,7 +122,6 @@ const closeModal = () => {
 
 .column-header {
   cursor: grab;
-  user-select: none;
   padding-bottom: 12px;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -122,6 +134,7 @@ const closeModal = () => {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 8px;
 }
 
 .delete-column {
@@ -139,12 +152,6 @@ const closeModal = () => {
   background-color: #fee2e2;
 }
 
-h3 {
-  margin: 0;
-  font-size: 1.125rem;
-  color: #111827;
-}
-
 .task-count {
   font-size: 0.875rem;
   color: #6b7280;
@@ -160,7 +167,6 @@ h3 {
   min-height: 100px;
 }
 </style>
-
 
 
 

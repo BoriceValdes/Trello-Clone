@@ -1,70 +1,65 @@
 <template>
-    <div class="input-container">
-      <label v-if="label" :for="id">{{ label }}</label>
-      <input
-        :id="id"
-        :value="modelValue"
-        @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
-        :placeholder="placeholder"
-        :type="type"
-      />
-    </div>
+  <div class="input-container">
+    <label v-if="label" class="input-label">{{ label }}</label>
+    <input
+      v-if="type !== 'textarea'"
+      :type="type"
+      :value="modelValue"
+      @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+      :placeholder="placeholder"
+      class="input-field"
+      v-bind="$attrs"
+    >
+    <textarea
+      v-else
+      :value="modelValue"
+      @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
+      :placeholder="placeholder"
+      class="input-field textarea"
+      v-bind="$attrs"
+    ></textarea>
+  </div>
 </template>
-  
+
 <script setup lang="ts">
-  import { nanoid } from 'nanoid';
-  
-  defineProps({
-    modelValue: {
-      type: [String, Number],
-      required: true
-    },
-    label: {
-      type: String,
-      default: ''
-    },
-    placeholder: {
-      type: String,
-      default: ''
-    },
-    type: {
-      type: String,
-      default: 'text'
-    },
-    id: {
-      type: String,
-      default: () => nanoid()
-    }
-  });
-  
-  defineEmits(['update:modelValue']);
-  </script>
-  
-  <style scoped>
-  .input-container {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    width: 100%;
-  }
-  
-  label {
-    font-size: 0.875rem;
-    color: #4b5563;
-    font-weight: 500;
-  }
-  
-  input {
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    font-size: 1rem;
-    transition: border-color 0.2s;
-  
-    &:focus {
-      outline: none;
-      border-color: #4f46e5;
-      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
-    }
-  }
+defineProps<{
+  modelValue?: string;
+  label?: string;
+  placeholder?: string;
+  type?: string;
+}>();
+
+defineEmits(['update:modelValue']);
+</script>
+
+<style scoped>
+.input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.input-field {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+.textarea {
+  min-height: 80px;
+  resize: vertical;
+}
 </style>

@@ -1,34 +1,41 @@
 <template>
   <Transition name="modal">
-    <div v-if="isOpen" class="modal-overlay" @click.self="closeModal">
+    <div v-if="isOpen" class="modal-overlay" @click.self="close">
       <div class="modal-container">
         <div class="modal-header">
-          <h3>Ajouter une tâche</h3>
-          <button class="close-btn" @click="closeModal">
+          <h3>Nouvelle tâche</h3>
+          <button class="close-btn" @click="close">
             ✕
           </button>
         </div>
 
         <div class="modal-body">
           <Input 
-            v-model="newTask.title"
-            label="Titre de la tâche"
+            v-model="form.title"
+            label="Titre"
             placeholder="Que faut-il faire ?"
             ref="titleInput"
+            @keyup.enter="submit"
+          />
+          <Input
+            v-model="form.description"
+            label="Description"
+            placeholder="Détails de la tâche..."
+            type="textarea"
           />
           <Select
-            v-model="newTask.priority"
+            v-model="form.priority"
             label="Priorité"
             :options="priorityOptions"
           />
         </div>
 
         <div class="modal-footer">
-          <Button type="secondary" @click="closeModal">Annuler</Button>
+          <Button type="secondary" @click="close">Annuler</Button>
           <Button 
             type="primary" 
-            @click="addTask"
-            :disabled="!isFormValid"
+            @click="submit"
+            :disabled="!form.title.trim()"
           >
             Ajouter
           </Button>
@@ -39,30 +46,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue';
-import { useBoardStore } from '../../store/board';
+import { ref, nextTick, watch } from 'vue';
 import Input from '../atoms/Input.vue';
 import Button from '../atoms/Button.vue';
 import Select from '../atoms/Select.vue';
-
-interface Task {
-  title: string;
-  priority: string;
-}
 
 const props = defineProps<{
   isOpen: boolean;
   columnId: string;
 }>();
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'submit']);
 
-const boardStore = useBoardStore();
-const newTask = ref<Task>({
+const form = ref({
   title: '',
+  description: '',
   priority: 'medium'
 });
-const titleInput = ref<InstanceType<typeof Input> | null>(null);
 
 const priorityOptions = [
   { value: 'high', label: 'Haute priorité' },
@@ -70,24 +70,17 @@ const priorityOptions = [
   { value: 'low', label: 'Basse priorité' }
 ];
 
-const isFormValid = computed(() => {
-  return newTask.value.title.trim() !== '';
-});
+const titleInput = ref<InstanceType<typeof Input> | null>(null);
 
-const addTask = () => {
-  if (!isFormValid.value) return;
-
-  boardStore.addTask(props.columnId, {
-    title: newTask.value.title,
-    priority: newTask.value.priority
-  });
-
-  newTask.value = { title: '', priority: 'medium' };
-  closeModal();
+const close = () => {
+  form.value = { title: '', description: '', priority: 'medium' };
+  emit('close');
 };
 
-const closeModal = () => {
-  emit('close');
+const submit = () => {
+  if (!form.value.title.trim()) return;
+  emit('submit', { ...form.value });
+  close();
 };
 
 watch(() => props.isOpen, (isOpen) => {
@@ -131,9 +124,6 @@ watch(() => props.isOpen, (isOpen) => {
 
 .modal-body {
   padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
 .modal-footer {
@@ -150,4 +140,7 @@ watch(() => props.isOpen, (isOpen) => {
   font-size: 1.5rem;
   cursor: pointer;
 }
-</style> 
+</style>
+
+
+
